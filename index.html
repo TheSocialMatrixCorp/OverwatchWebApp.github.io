@@ -1,11 +1,12 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="0">
 <title>Overwatch Web App</title>
-<meta http-equiv="refresh" content="0; url=https://folks-became-allied-visits.trycloudflare.com">
-<link rel="canonical" href="https://folks-became-allied-visits.trycloudflare.com">
 <style>
   :root { color-scheme: light dark; }
   body {
@@ -16,33 +17,89 @@
   .card { max-width: 34rem; }
   h1 { font-size: 1.35rem; margin: 0 0 .5rem; font-weight: 600; }
   p  { margin: .4rem 0; color: #9aa3b2; line-height: 1.5; }
-  a.go {
+  a.go, button.retry {
     display: inline-block; margin-top: 1.1rem; padding: .7rem 1.4rem;
-    background: #3b82f6; color: #fff; text-decoration: none;
-    border-radius: .5rem; font-weight: 600;
+    background: #3b82f6; color: #fff; text-decoration: none; border: 0;
+    border-radius: .5rem; font-weight: 600; font-size: 1rem; cursor: pointer;
+    font-family: inherit;
   }
-  a.go:hover { background: #2563eb; }
+  a.go:hover, button.retry:hover { background: #2563eb; }
+  button.retry { background: #374151; margin-left: .5rem; }
+  button.retry:hover { background: #4b5563; }
   code { background: #1b1f27; padding: .15rem .4rem; border-radius: .25rem; font-size: .85em; }
   .meta { margin-top: 1.5rem; font-size: .8rem; color: #6b7280; }
+  .note { color: #fbbf24; min-height: 1.2em; }
 </style>
 </head>
 <body>
   <div class="card">
     <h1>Overwatch Web App</h1>
-    <p>Redirecting you to the current server&hellip;</p>
-    <a class="go" href="https://folks-became-allied-visits.trycloudflare.com">Open the app</a>
+    <p id="status">Finding the current server&hellip;</p>
+    <p class="note" id="note"></p>
+    <div>
+      <a class="go" id="go" href="https://leading-university-poker-majority.trycloudflare.com">Open the app</a>
+      <button class="retry" id="retry" type="button">Check again</button>
+    </div>
     <p class="meta">
-      Current address: <code>folks-became-allied-visits.trycloudflare.com</code><br>
-      Link last refreshed: 2026-09-09 09:19:43
+      Current address: <code id="addr">leading-university-poker-majority.trycloudflare.com</code><br>
+      Link last refreshed: <span id="when">2026-09-14 07:11:52</span>
     </p>
     <p class="meta">
       If this does not load, the server is offline. Start it again with
-      <code>tunnel.bat</code> and this page will update itself.
+      <code>tunnel.bat</code>, wait about a minute, then press <em>Check again</em>.
     </p>
   </div>
   <script>
-    // Belt and braces: meta refresh handles most cases, this covers the rest.
-    location.replace("https://folks-became-allied-visits.trycloudflare.com");
+  (function () {
+    var baked  = "https://leading-university-poker-majority.trycloudflare.com";
+    var status = document.getElementById("status");
+    var note   = document.getElementById("note");
+    var addr   = document.getElementById("addr");
+    var when   = document.getElementById("when");
+    var go     = document.getElementById("go");
+    var retry  = document.getElementById("retry");
+    var timer  = null;
+
+    function host(u) { return u.replace(/^https?:\/\//, "").replace(/\/+$/, ""); }
+
+    function aim(url, fresh) {
+      go.href = url;
+      addr.textContent = host(url);
+      if (timer) { clearTimeout(timer); }
+      status.textContent = "Redirecting you to the current server\u2026";
+      // A short beat, so a stale-cache warning is actually readable before we jump.
+      timer = setTimeout(function () { location.replace(url); }, fresh ? 1800 : 900);
+    }
+
+    function check() {
+      if (timer) { clearTimeout(timer); timer = null; }
+      status.textContent = "Finding the current server\u2026";
+      note.textContent = "";
+      // Unique query string: misses the GitHub Pages CDN cache, so this is the
+      // real current address even if the HTML around it is up to 10 minutes old.
+      fetch("url.json?t=" + Date.now(), { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.url) { aim(baked, false); return; }
+          if (d.updated) {
+            var t = new Date(d.updated);
+            if (!isNaN(t)) { when.textContent = t.toLocaleString(); }
+          }
+          var stale = d.url !== baked;
+          if (stale) { note.textContent = "This page was cached. Using the newer link."; }
+          aim(d.url, stale);
+        })
+        .catch(function () {
+          note.textContent = "Could not check for a newer link \u2014 using the last known one.";
+          aim(baked, false);
+        });
+    }
+
+    retry.addEventListener("click", check);
+    // Clicking the button should go now, not wait for the timer.
+    go.addEventListener("click", function () { if (timer) { clearTimeout(timer); } });
+    check();
+  })();
   </script>
 </body>
 </html>
